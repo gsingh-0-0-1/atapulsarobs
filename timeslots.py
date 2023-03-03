@@ -184,9 +184,15 @@ def check_pulsar_availability(pulsar, timewindows = None):
 
 def create_obs_schedule(l, timewindows = None):
     if timewindows is None:
-        now = datetime.datetime.now()
-        delta = datetime.timedelta(minutes = 30)
-        timewindows = [[now - delta, now + delta]]
+        timewindows = [[0, 1]]
+
+    now = datetime.datetime.now()
+
+    for window_ind in range(len(timewindows)):
+        start = timewindows[window_ind][0]
+        end = timewindows[window_ind][1]
+        w = [now + datetime.timedelta(minutes = start), now + datetime.timedelta(minutes = end)]
+        timewindows[window_ind] = w
 
     print("Checking pulsar visibilities...")
     all_availabilities = [check_pulsar_availability(pulsar, timewindows) for pulsar in l] 
