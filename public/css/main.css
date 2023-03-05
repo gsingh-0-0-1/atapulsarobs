@@ -1,0 +1,27 @@
+body{
+    background-color: #222;
+}
+
+.obsLink{
+    padding: 2.5vh 2.5vh;
+    font-family: Source Code Pro, Courier;
+    background-color: #444;
+    position: relative;
+    left: 5%;
+    width: 40%;
+    margin-top: 2%;
+    font-size: 3vh;
+}
+
+.obsLink a{
+    color: white;
+    text-decoration: none;
+}
+
+.obsLink a:hover{
+    color: #aaa;
+}
+
+#obsLinkTemplate{
+    display: none;
+}

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import argparse
 
 from astropy.coordinates import EarthLocation, SkyCoord, AltAz
 from astropy.time import Time
@@ -8,6 +9,7 @@ from astropy import units as u
 import datetime
 import numpy as np
 
+
 ATA_LAT = 40.8178
 ATA_LON = 121.473
 
@@ -15,7 +17,9 @@ time_string = "%Y-%m-%d %H:%M:%S"
 
 ATA = EarthLocation.of_site("Allen Telescope Array")
 
-ATA_PULSARS = PULSARS = ['J1939+2134', 
+'''
+ATA_PULSARS = PULSARS = 
+       ['J1939+2134', 
         'J1713+0747', 
         'J2145-0750', 
         'J1857+0943', 
@@ -34,7 +38,11 @@ ATA_PULSARS = PULSARS = ['J1939+2134',
         'J1645-0317', 
         'J1239+2453', 
         'J0358+5413']
+'''
 
+f = open("PULSARS.txt")
+ATA_PULSARS = PULSARS = [el for el in f.read().split("\n") if el != '']
+f.close()
 MAX_OBS_TIME = 30
 MIN_OBS_TIME = 10
 OBS_TIME_RANGE = MAX_OBS_TIME - MIN_OBS_TIME 
@@ -296,3 +304,19 @@ def create_obs_schedule(l, timewindows = None):
             marker = marker + datetime.timedelta(minutes = obs_len)
 
     return schedule
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description = 'Create an observing schedule for target pulsars.')
+    parser.add_argument('-w', '--windows', help = "Format, in minutes: start-end,start-end. Example: 0-60,120-180")
+
+    args = parser.parse_args()
+
+    if args.windows == None:
+        args.windows = "0-60"
+
+    windows = args.windows.split(",")
+    windows = [[int(n) for n in el.split("-")] for el in windows]
+
+    schedule = create_obs_schedule(PULSARS, windows)

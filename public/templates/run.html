@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>ATA Pulsar Obs Portal</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro">
+    <link href = "./css/main.css" rel = "stylesheet" type="text/css">
+</head>
+<body>
+    <div id="obsLinkTemplate" class="obsLink">
+        <a href="">
+        </a>
+    </div>
+</body>
+<script type="text/javascript">
+    var req = new XMLHttpRequest()
+    req.open("GET", "/obsruns")
+    req.send()
+    req.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            var l = this.responseText.split(",")
+            l.reverse()
+            for (var run of l) {
+                var el = document.getElementById("obsLinkTemplate").cloneNode(true)
+                el.display = "block"
+                el.id = run
+                el.children[0].href = "/obsrun/" + run
+                el.children[0].textContent = run
+                document.body.appendChild(el)
+            }
+        }
+    }
+</script>
+</html>
