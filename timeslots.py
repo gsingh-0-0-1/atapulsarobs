@@ -8,7 +8,7 @@ from astropy import units as u
 
 import datetime
 import numpy as np
-
+import pandas as pd
 
 ATA_LAT = 40.8178
 ATA_LON = 121.473
@@ -40,9 +40,16 @@ ATA_PULSARS = PULSARS =
         'J0358+5413']
 '''
 
-f = open("PULSARS.txt")
-ATA_PULSARS = PULSARS = [el for el in f.read().split("\n") if el != '']
-f.close()
+ATA_PULSAR_DATA = pd.read_csv("PULSARS.csv")#[el.split(",") for el in f.read().split("\n") if el[0] != '' and if el[0] != "PULSAR"]
+
+ATA_PULSARS = PULSARS = ATA_PULSAR_DATA["PULSAR"]
+
+PRIORITIES = {}
+
+for priority in range(1, max([int(el) for el in ATA_PULSAR_DATA["PRIORITY"]]) + 1):
+    if priority not in PRIORITIES:
+        PRIORITIES[priority] = ATA_PULSAR_DATA["PULSAR"][ATA_PULSAR_DATA["PRIORITY"] == priority].tolist()
+
 MAX_OBS_TIME = 30
 MIN_OBS_TIME = 10
 OBS_TIME_RANGE = MAX_OBS_TIME - MIN_OBS_TIME 
@@ -51,7 +58,7 @@ FLUX_DENS_HIGH_PLAT = 30
 FLUX_DENS_LOW_PLAT = 5
 FLUX_DENS_RANGE = FLUX_DENS_HIGH_PLAT - FLUX_DENS_LOW_PLAT
 
-OBS_BUFFER_TIME = 1
+OBS_BUFFER_TIME = 3
 
 PSRCAT_PARAMS = [
     'PSRJ',
@@ -247,61 +254,74 @@ def create_obs_schedule(l, timewindows = None):
             else:
                 available.append(pulsar)
 
-        print("\tSorting by earliest visibility...")
-        available.sort(key = lambda x : availabilities_dict[x][twind_ind][0])
-
-        print("\tPrioritizing unobserved pulsars...")
-        #for every pulsar we observe, we want to put those at the back of the list 
-        #so we will keep track of which pulsars we have observed, and whenever we
-        #construct a lis of available pulsars, and sort by earliest visibility
-        #time, we will remove every observed pulsar and then add the list of observed pulsars
-        #back to the end (after sorting that itself for earliest visibility time)
-
-        #we only want to add back observed pulsars that are still available
-        observed_add_back = []
-
-        for pulsar in observed:
-            try:
-                available.remove(pulsar)
-                observed_add_back.append(pulsar)
-            except ValueError:
-                pass
-
-        observed_add_back.sort(key = lambda x : availabilities_dict[x][twind_ind][0])
-
-        available = available + observed_add_back
-
-        visible_matches[timewindow[0]] = available
-
-        print("\tConstructing schedule for window...")
-
         schedule[timewindow[0]] = []
         marker = timewindow[0]
 
-        for pulsar in available:
-            obs_len = obstimedict[pulsar]
-
-            pulsar_window = availabilities_dict[pulsar][twind_ind]
-
-            if marker < pulsar_window[0]:
-                marker = pulsar_window[0]
-
-            #if the pulsar isn't visible for long enough
-            if pulsar_window[1] - pulsar_window[0] < datetime.timedelta(minutes = obs_len):
+        for priority in range(max(PRIORITIES), 0, -1):
+            print("\t\tWorking on priority " + str(priority) + "...")
+            if priority not in PRIORITIES:
+                print("\t\t\tNo pulsars with this priority, skipping...")
                 continue
 
-            #if we don't have enough time to observe the pulsar
-            if marker + datetime.timedelta(minutes = obs_len) > timewindow[1]:
-                continue
+            this_priority_avail = [el for el in available if el in PRIORITIES[priority]]
+            this_priority_avail.sort(key = lambda x : availabilities_dict[x][twind_ind][0])
 
-            schedule[timewindow[0]].append([pulsar, obs_len])
+            print("\t\t\tPrioritizing unobserved pulsars...")
+            #for every pulsar we observe, we want to put those at the back of the list 
+            #so we will keep track of which pulsars we have observed, and whenever we
+            #construct a lis of available pulsars, and sort by earliest visibility
+            #time, we will remove every observed pulsar and then add the list of observed pulsars
+            #back to the end (after sorting that itself for earliest visibility time)
 
-            if pulsar not in observed:
-                observed.append(pulsar)
+            #we only want to add back observed pulsars that are still available
+            observed_add_back = []
 
-            print("\t\tObserve", pulsar, "@", marker.strftime(time_string), "for", round(obs_len, 2) - OBS_BUFFER_TIME, "+", OBS_BUFFER_TIME, "\tmin")
+            for pulsar in observed:
+                try:
+                    this_priority_avail.remove(pulsar)
+                    observed_add_back.append(pulsar)
+                except ValueError:
+                    pass
 
-            marker = marker + datetime.timedelta(minutes = obs_len)
+            observed_add_back.sort(key = lambda x : availabilities_dict[x][twind_ind][0])
+
+            this_priority_avail = this_priority_avail + observed_add_back
+
+            visible_matches[timewindow[0]] = this_priority_avail
+
+            print("\t\t\tConstructing schedule for window...")
+
+            for pulsar in this_priority_avail:
+                obs_len = obstimedict[pulsar]
+
+                pulsar_window = availabilities_dict[pulsar][twind_ind]
+
+                if marker < pulsar_window[0]:
+                    marker = pulsar_window[0]
+
+                #if the pulsar isn't visible for long enough
+                if pulsar_window[1] - pulsar_window[0] < datetime.timedelta(minutes = obs_len):
+                    continue
+
+                #if we don't have enough time to observe the pulsar
+                if marker + datetime.timedelta(minutes = obs_len) > timewindow[1]:
+                    continue
+
+                schedule[timewindow[0]].append([pulsar, obs_len])
+
+                if pulsar not in observed:
+                    observed.append(pulsar)
+
+                print("\t\t\t\tObserve P(" + str(priority) + ")", pulsar, "@", marker.strftime(time_string), "for {:.2f}".format(obs_len - OBS_BUFFER_TIME), "+", OBS_BUFFER_TIME, "\tmin")
+
+                marker = marker + datetime.timedelta(minutes = obs_len)
+
+    print("-" * 50)
+    print("FINAL OBSERVING SCHEDULE:")
+    for window in schedule:
+        print("Starting @ " + window.strftime(time_string) + ":")
+        for pulsar in schedule[window]:
+            print("\tObserve " + pulsar[0] + "  for {:.2f}".format(pulsar[1] - OBS_BUFFER_TIME, 2), "+", OBS_BUFFER_TIME, "minutes")
 
     return schedule
 
