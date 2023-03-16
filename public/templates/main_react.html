@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ATA Pulsar Obs Portal</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro">
+    <link href = "./public/css/main.css" rel = "stylesheet" type="text/css">
+</head>
+<body>
+    <div id="root">
+    </div>
+</body>
+<script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+<script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+<script type="text/babel">
+    function Obs(props){
+        return <div class="obsLink" id={props.name}>{props.name}</div>;
+    }
+
+    
+    var req = new XMLHttpRequest()
+    req.open("GET", "/obsruns")
+    req.send()
+    req.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            var l = this.responseText.split(",")
+            l.reverse()
+            /*
+            ReactDom.render(
+                l.map((key) => Obs({'name' : key})),
+                document.getElementById("root")
+            }
+            */
+            for (var run of l) {
+                ReactDOM.render(Obs({'name' : run}), document.getElementById('root'))
+            }
+            
+        }
+    }
+</script>
+</html>

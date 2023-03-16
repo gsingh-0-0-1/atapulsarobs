@@ -4,15 +4,54 @@
 	<meta charset="UTF-8">
 	<title>ATA Pulsar Obs Portal</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro">
-    <link href = "./css/main.css" rel = "stylesheet" type="text/css">
+    <link href = "./public/css/main.css" rel = "stylesheet" type="text/css">
 </head>
 <body>
-    <div id="obsLinkTemplate" class="obsLink">
+    <div id="obsLinkTemplate" class="obsLink" onclick=javascript:fetchTargetsForRun(this)>
+        <!--
         <a href="">
         </a>
+        -->
     </div>
 </body>
 <script type="text/javascript">
+
+    function removeTargetsForRun(el) {
+        while (el.nextSibling.classList.contains("target")) {
+            document.body.removeChild(el.nextSibling)
+        }
+        el.classList.remove("fetched")
+    }
+
+    function fetchTargetsForRun(el) {
+        if (el.classList.contains("fetched")) {
+            removeTargetsForRun(el)
+            return
+        }
+
+        var run = el.id;
+        var this_req = new XMLHttpRequest()
+        el.classList.add("fetched")
+        this_req.open("GET", "/targetlist/" + run)
+        this_req.send()
+        this_req.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                var l = this.responseText.split("|")
+                for (var target of l) {
+                    var target_el = document.getElementById("obsLinkTemplate").cloneNode(true)
+                    target_el.display = "block"
+                    target_el.id = target
+                    target_el.textContent = target
+                    target_el.onclick = null
+                    target_el.classList.add("target")
+                    el.parentNode.insertBefore(target_el, el.nextSibling)
+                    //document.body.insertAfter(target_el, el)
+                    //el.appendChild(target_el)
+                }
+            }
+        }
+    }
+
     var req = new XMLHttpRequest()
     req.open("GET", "/obsruns")
     req.send()
@@ -24,8 +63,9 @@
                 var el = document.getElementById("obsLinkTemplate").cloneNode(true)
                 el.display = "block"
                 el.id = run
-                el.children[0].href = "/obsrun/" + run
-                el.children[0].textContent = run
+                el.textContent = run
+                //el.children[0].href = "/obsrun/" + run
+                //el.children[0].textContent = run
                 document.body.appendChild(el)
             }
         }

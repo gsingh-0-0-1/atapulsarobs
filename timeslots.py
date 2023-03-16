@@ -141,6 +141,8 @@ def check_pulsar_availability(pulsar, timewindows = None):
         az_end = altaz_end[0]
         el_end = altaz_end[1]
 
+        print(az_beg, el_beg, az_end, el_end)
+
         available = []
 
         search_delta = datetime.timedelta(minutes = 1)
@@ -177,7 +179,7 @@ def check_pulsar_availability(pulsar, timewindows = None):
             if available[0]:
                 object_sets = window[1]
                 az = az_end
-                el = el_beg
+                el = el_end
                 while el < 20:
                     object_sets = object_sets - search_delta
 
@@ -185,6 +187,8 @@ def check_pulsar_availability(pulsar, timewindows = None):
                     #for the object_sets time being less than the start
 
                     az, el = radec_to_azel(RAJ_fmt, DECJ_fmt, object_sets)
+                    
+                    print(az, el)
 
                 available.append(object_sets)
             #otherwise we know the object is not visible during the window
@@ -223,9 +227,12 @@ def create_obs_schedule(l, timewindows = None):
     for pulsar_ind in range(len(l)):
         pulsar = l[pulsar_ind]
         fluxdens = float(fetch_pulsar_data(pulsar, "S1400"))
-        basetime = MIN_OBS_TIME + OBS_TIME_RANGE * ((max(FLUX_DENS_HIGH_PLAT - fluxdens, 0) / FLUX_DENS_RANGE) ** (1 / 2))
+        basetime = MIN_OBS_TIME + OBS_TIME_RANGE * ((max(FLUX_DENS_HIGH_PLAT - fluxdens, 0) / FLUX_DENS_HIGH_PLAT) ** (1 / 2))
         maxtime = MAX_OBS_TIME
         obstime = OBS_BUFFER_TIME + min(basetime, MAX_OBS_TIME)
+
+        obstime = min( max( MIN_OBS_TIME, MIN_OBS_TIME / ((fluxdens / FLUX_DENS_HIGH_PLAT) ** 2)), MAX_OBS_TIME) + OBS_BUFFER_TIME
+
         all_obstimes.append(obstime)
 
     obstimedict = {}
@@ -269,7 +276,7 @@ def create_obs_schedule(l, timewindows = None):
             print("\t\t\tPrioritizing unobserved pulsars...")
             #for every pulsar we observe, we want to put those at the back of the list 
             #so we will keep track of which pulsars we have observed, and whenever we
-            #construct a lis of available pulsars, and sort by earliest visibility
+            #construct a list of available pulsars, and sort by earliest visibility
             #time, we will remove every observed pulsar and then add the list of observed pulsars
             #back to the end (after sorting that itself for earliest visibility time)
 
@@ -290,7 +297,7 @@ def create_obs_schedule(l, timewindows = None):
             visible_matches[timewindow[0]] = this_priority_avail
 
             print("\t\t\tConstructing schedule for window...")
-
+            print("\t\t\tAvailable pulsars: " + " ".join(this_priority_avail))
             for pulsar in this_priority_avail:
                 obs_len = obstimedict[pulsar]
 
@@ -301,10 +308,12 @@ def create_obs_schedule(l, timewindows = None):
 
                 #if the pulsar isn't visible for long enough
                 if pulsar_window[1] - pulsar_window[0] < datetime.timedelta(minutes = obs_len):
+                    print("\t\t\t\t" + pulsar, " not visible:", pulsar_window[0].strftime(time_string), "->", pulsar_window[1].strftime(time_string))
                     continue
 
                 #if we don't have enough time to observe the pulsar
                 if marker + datetime.timedelta(minutes = obs_len) > timewindow[1]:
+                    print("\t\t\t\t" + pulsar, " takes too long:", marker.strftime(time_string), "->|", timewindow[1].strftime(time_string), "but need", obs_len)
                     continue
 
                 schedule[timewindow[0]].append([pulsar, obs_len])
