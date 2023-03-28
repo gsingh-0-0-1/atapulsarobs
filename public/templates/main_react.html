@@ -14,8 +14,44 @@
 <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
 <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
 <script type="text/babel">
+    function removeTargetsForRun(el) {
+        while (el.nextSibling.classList.contains("target")) {
+            document.body.removeChild(el.nextSibling)
+        }
+        el.classList.remove("fetched")
+    }
+
+    function fetchTargetsForRun(el) {
+        if (el.ref.current.classList.contains("fetched")) {
+            removeTargetsForRun(el)
+            return
+        }
+
+        var run = el.id;
+        var this_req = new XMLHttpRequest()
+        el.ref.current.classList.add("fetched")
+        this_req.open("GET", "/targetlist/" + run)
+        this_req.send()
+        this_req.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                var l = this.responseText.split("|")
+                for (var target of l) {
+                    var target_el = document.getElementById("obsLinkTemplate").cloneNode(true)
+                    target_el.display = "block"
+                    target_el.id = target
+                    target_el.textContent = target
+                    target_el.onclick = null
+                    target_el.ref.current.classList.add("target")
+                    el.parentNode.insertBefore(target_el, el.nextSibling)
+                    //document.body.insertAfter(target_el, el)
+                    //el.appendChild(target_el)
+                }
+            }
+        }
+    }
+
     function Obs(props){
-        return <div class="obsLink" id={props.name}>{props.name}</div>;
+        return <div className="obsLink" ref={useRef(null)} key={props.name} id={props.name} onClick={function(){fetchTargetsForRun(this)}}>{props.name}</div>;
     }
 
     
@@ -26,15 +62,13 @@
         if (this.readyState == 4 && this.status == 200) {
             var l = this.responseText.split(",")
             l.reverse()
-            /*
-            ReactDom.render(
-                l.map((key) => Obs({'name' : key})),
-                document.getElementById("root")
-            }
-            */
+            var rows = []
+            
             for (var run of l) {
-                ReactDOM.render(Obs({'name' : run}), document.getElementById('root'))
+                rows.push(Obs({'name' : run}))
             }
+
+            ReactDOM.render(<div>{rows}</div>, document.getElementById('root'))
             
         }
     }

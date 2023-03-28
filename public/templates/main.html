@@ -8,10 +8,10 @@
 </head>
 <body>
     <div id="obsLinkTemplate" class="obsLink" onclick=javascript:fetchTargetsForRun(this)>
-        <!--
+        
         <a href="">
         </a>
-        -->
+        
     </div>
 </body>
 <script type="text/javascript">
@@ -41,9 +41,11 @@
                     var target_el = document.getElementById("obsLinkTemplate").cloneNode(true)
                     target_el.display = "block"
                     target_el.id = target
-                    target_el.textContent = target
+                    //target_el.textContent = target
                     target_el.onclick = null
                     target_el.classList.add("target")
+                    target_el.children[0].href = "/pulsar_data/" + el.id + "/" + target
+                    target_el.children[0].textContent = target
                     el.parentNode.insertBefore(target_el, el.nextSibling)
                     //document.body.insertAfter(target_el, el)
                     //el.appendChild(target_el)

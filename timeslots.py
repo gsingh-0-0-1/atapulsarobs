@@ -15,7 +15,10 @@ ATA_LON = 121.473
 
 time_string = "%Y-%m-%d %H:%M:%S"
 
-ATA = EarthLocation.of_site("Allen Telescope Array")
+#ATA = EarthLocation.of_site("Allen Telescope Array")
+#ATA = EarthLocation(-2524157.30002672, -4123357.36615597, 4147750.83995041)
+
+ATA = EarthLocation(lat = 40.8175, lon = -121.47333)
 
 '''
 ATA_PULSARS = PULSARS = 
@@ -58,7 +61,7 @@ FLUX_DENS_HIGH_PLAT = 30
 FLUX_DENS_LOW_PLAT = 5
 FLUX_DENS_RANGE = FLUX_DENS_HIGH_PLAT - FLUX_DENS_LOW_PLAT
 
-OBS_BUFFER_TIME = 3
+OBS_BUFFER_TIME = 5
 
 PSRCAT_PARAMS = [
     'PSRJ',
@@ -113,9 +116,9 @@ def radec_to_azel(ra, dec, time):
 def check_pulsar_availability(pulsar, timewindows = None):
     if timewindows is None:
         now = datetime.datetime.now()
-        delta = datetime.timedelta(minutes = 30)
+        delta = datetime.timedelta(minutes = 180)
 
-        timewindows = [[now - delta, now + delta]]
+        timewindows = [[now, now + delta]]
     
     data = fetch_pulsar_data(pulsar)
 
@@ -141,12 +144,49 @@ def check_pulsar_availability(pulsar, timewindows = None):
         az_end = altaz_end[0]
         el_end = altaz_end[1]
 
-        print(az_beg, el_beg, az_end, el_end)
-
         available = []
 
-        search_delta = datetime.timedelta(minutes = 1)
+        #the idea here is that we set the rise and set times to be
+        #the edges of the window of availability, and then check
+        #if the object rises later or sets earlier. if it doesn't,
+        #then functionally the object does "rise" and "set" at the edges
+        #of the window of availability, at least with regards to our
+        #observation
+        rise_time = window[0]
+        set_time = window[1]
 
+        search_delta = datetime.timedelta(minutes = 60)
+
+        if el_beg < 20:
+            while rise_time < window[1]:
+                rise_time = rise_time + search_delta
+                el_beg_new = radec_to_azel(RAJ_fmt, DECJ_fmt, rise_time)[1]
+                if el_beg_new >= 20:
+                    if abs(search_delta.total_seconds()) < 5:
+                        break
+                    rise_time = rise_time - search_delta
+                    search_delta = search_delta * 0.5
+
+        search_delta = datetime.timedelta(minutes = 60)
+
+        if el_end < 20:
+            while set_time > window[0]:
+                set_time = set_time - search_delta
+                el_end_new = radec_to_azel(RAJ_fmt, DECJ_fmt, set_time)[1]
+                if el_end_new >= 20:
+                    if abs(search_delta.total_seconds()) < 5:
+                        break
+                    set_time = set_time + search_delta
+                    search_delta = search_delta * 0.5
+
+        if rise_time >= window[1]:
+            available = [False, False]
+        else:
+            available.append(rise_time)
+            available.append(set_time)
+
+
+        '''
         #check if the object is available at the start of the window
         #else find when it rises
         if el_beg >= 20:
@@ -168,8 +208,10 @@ def check_pulsar_availability(pulsar, timewindows = None):
                 available.append(False)
             else:
                 available.append(object_rises)
+    
+        '''
 
-
+        '''
         #and now check for the end
         if el_end >= 20:
             available.append(window[1])
@@ -188,13 +230,11 @@ def check_pulsar_availability(pulsar, timewindows = None):
 
                     az, el = radec_to_azel(RAJ_fmt, DECJ_fmt, object_sets)
                     
-                    print(az, el)
-
                 available.append(object_sets)
             #otherwise we know the object is not visible during the window
             else:
                 available.append(False)
-
+        '''
 
         availability.append(available)
 
@@ -250,6 +290,8 @@ def create_obs_schedule(l, timewindows = None):
 
     observed = []
 
+    QUEUE = []
+
     for twind_ind in range(len(timewindows)):
         timewindow = timewindows[twind_ind]
         print("\tChecking visible pulsars for window", timewindow[0].strftime(time_string), "->", timewindow[1].strftime(time_string))
@@ -265,6 +307,7 @@ def create_obs_schedule(l, timewindows = None):
         marker = timewindow[0]
 
         for priority in range(max(PRIORITIES), 0, -1):
+
             print("\t\tWorking on priority " + str(priority) + "...")
             if priority not in PRIORITIES:
                 print("\t\t\tNo pulsars with this priority, skipping...")
@@ -299,6 +342,8 @@ def create_obs_schedule(l, timewindows = None):
             print("\t\t\tConstructing schedule for window...")
             print("\t\t\tAvailable pulsars: " + " ".join(this_priority_avail))
             for pulsar in this_priority_avail:
+                marker = timewindow[0]
+
                 obs_len = obstimedict[pulsar]
 
                 pulsar_window = availabilities_dict[pulsar][twind_ind]
@@ -311,17 +356,54 @@ def create_obs_schedule(l, timewindows = None):
                     print("\t\t\t\t" + pulsar, " not visible:", pulsar_window[0].strftime(time_string), "->", pulsar_window[1].strftime(time_string))
                     continue
 
+                '''
                 #if we don't have enough time to observe the pulsar
                 if marker + datetime.timedelta(minutes = obs_len) > timewindow[1]:
                     print("\t\t\t\t" + pulsar, " takes too long:", marker.strftime(time_string), "->|", timewindow[1].strftime(time_string), "but need", obs_len)
                     continue
+                '''
+                #we're going to iterate through the current schedule, and search for spaces between observations
+                #if that space is greater than our required observation time, then we will schedule the observation
+                schedule_item = None
+                this_window_schedule = schedule[timewindow[0]]
+                for window_end_index in range(len(this_window_schedule) + 1):
+                    if window_end_index == 0:
+                        empty_window_start = timewindow[0]
+                        #if there are no currently scheduled observations
+                        if len(this_window_schedule) == 0:
+                            empty_window_end = timewindow[1]
+                        else:    
+                            empty_window_end = this_window_schedule[window_end_index][2]
+                    elif window_end_index == len(this_window_schedule):
+                        empty_window_start = this_window_schedule[-1][2] + datetime.timedelta(minutes = this_window_schedule[-1][1])
+                        empty_window_end = timewindow[1]
+                    else:
+                        #the start of the window is the end of the previous observation
+                        #which we obtain by adding the obs time to the start time
+                        empty_window_start = this_window_schedule[window_end_index - 1][2] + datetime.timedelta(minutes = this_window_schedule[window_end_index - 1][1])
+                        #the end of the window is the start of the next observation
+                        empty_window_end = this_window_schedule[window_end_index][2]
+                    
 
-                schedule[timewindow[0]].append([pulsar, obs_len])
+                    #check if there's enough time in the empty window
+                    if empty_window_end - empty_window_start > datetime.timedelta(minutes = obs_len):
+                        #check if the pulsar sets after the needed observation time
+                        if pulsar_window[1] >= empty_window_start + datetime.timedelta(minutes = obs_len):
+                            #check if the pulsar rises before the needed observation time
+                            if pulsar_window[0] <= empty_window_end - datetime.timedelta(minutes = obs_len):
+                                schedule_item = [pulsar, obs_len, max(empty_window_start, pulsar_window[0]), priority]
+                                break
+
+                if schedule_item is not None:
+                    schedule[timewindow[0]].append(schedule_item)
+                    schedule[timewindow[0]].sort(key = lambda x : x[2])
+                else:
+                    continue
 
                 if pulsar not in observed:
                     observed.append(pulsar)
 
-                print("\t\t\t\tObserve P(" + str(priority) + ")", pulsar, "@", marker.strftime(time_string), "for {:.2f}".format(obs_len - OBS_BUFFER_TIME), "+", OBS_BUFFER_TIME, "\tmin")
+                print("\t\t\t\tObserve P(" + str(priority) + ")", pulsar, "@", schedule_item[2].strftime(time_string), "for {:.2f}".format(obs_len - OBS_BUFFER_TIME), "+", OBS_BUFFER_TIME, "\tmin")
 
                 marker = marker + datetime.timedelta(minutes = obs_len)
 
@@ -329,8 +411,15 @@ def create_obs_schedule(l, timewindows = None):
     print("FINAL OBSERVING SCHEDULE:")
     for window in schedule:
         print("Starting @ " + window.strftime(time_string) + ":")
-        for pulsar in schedule[window]:
-            print("\tObserve " + pulsar[0] + "  for {:.2f}".format(pulsar[1] - OBS_BUFFER_TIME, 2), "+", OBS_BUFFER_TIME, "minutes")
+        for pulsar_ind in range(len(schedule[window])):
+            pulsar = schedule[window][pulsar_ind]
+            
+            print("\tObserve P" + str(pulsar[3]) + " " + pulsar[0] + " for {:.2f}".format(pulsar[1] - OBS_BUFFER_TIME, 2), "+", OBS_BUFFER_TIME, "minutes, starting @", pulsar[2].strftime(time_string))
+
+            if pulsar_ind != len(schedule[window]) - 1:
+                wait_time = schedule[window][pulsar_ind + 1][2] - (pulsar[2] + datetime.timedelta(minutes = pulsar[1]))
+                if wait_time.seconds != 0:
+                    print("\tWAIT", round(wait_time.seconds / 60, 2), "min")
 
     return schedule
 
