@@ -1,8 +1,8 @@
-body{
+body {
     background-color: #222;
 }
 
-.obsLink{
+.obsLink {
     padding: 2.5vh 2.5vh;
     font-family: Source Code Pro, Courier;
     background-color: #444;
@@ -14,15 +14,64 @@ body{
     color: white;
 }
 
-.obsLink a{
+.obsLink a {
     color: white;
     text-decoration: none;
 }
 
-.obsLink a:hover{
+.obsLink a:hover {
     color: #aaa;
 }
 
-#obsLinkTemplate{
+#obsLinkTemplate {
     display: none;
 }
+
+#pulsar_search_box {
+    position: fixed;
+    right: 15%;
+    top: 5%;
+    width: 15%;
+    padding: 2vh 2vh;
+    font-family: Source Code Pro, Courier;
+    border: none;
+    background-color: #999;
+}
+
+#pulsar_search_box:focus {
+    outline: none;
+}
+
+#search_results {
+    position: fixed;
+    right: 15%;
+    top: 15%;
+    height: 70%;
+    width: 15%;
+    overflow: scroll;
+}
+
+.result {
+    position: relative;
+    margin-bottom: 1vh;
+    width: 100%;
+    font-size: 1.5vh;
+    padding: 1vh 1vh;
+    background-color: #bbb;
+    font-family: Source Code Pro, Courier;
+    color: black;
+}
+
+.result a {
+    color: #222;
+}
+
+#title {
+    margin-top: 2vh;
+    margin-bottom: 2vh;
+    font-size: 3.5vh;
+    font-family: Source Code Pro, Courier;
+    margin-left: 2vh;
+    color: #ddd;
+}
+

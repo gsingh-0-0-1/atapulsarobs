@@ -7,14 +7,93 @@
     <link href = "./public/css/main.css" rel = "stylesheet" type="text/css">
 </head>
 <body>
+    <div id="title">
+        ata-pulsar-obs <span id="pulsar_anim">&nbsp;</span>
+    </div>
+
     <div id="obsLinkTemplate" class="obsLink" onclick=javascript:fetchTargetsForRun(this)>
         
         <a href="">
         </a>
         
     </div>
+
+    <input id="pulsar_search_box" type="text" placeholder="Pulsar search..." onkeydown="javascript:handleSearchInput(this)">
+    </input>
+
+    <div id="search_results">
+        <div id="result_template" class="result">
+            No results...
+        </div>
+    </div>
 </body>
 <script type="text/javascript">
+
+    function animatePulsar() {
+        var el = document.getElementById("pulsar_anim")
+        var text = el.innerHTML
+        if (text == "&nbsp;") {
+            el.innerHTML = "-"
+        }
+        else if (text == "-") {
+            el.innerHTML = "-("
+        }
+        else if (text == "-(") {
+            el.innerHTML = "&nbsp;(O"
+        }
+        else if (text == "&nbsp;(O") {
+            el.innerHTML = "&nbsp;&nbsp;O)"
+        }
+        else if (text == "&nbsp;&nbsp;O)") {
+            el.innerHTML = "&nbsp;&nbsp;&nbsp;)-"
+        }
+        else if (text == "&nbsp;&nbsp;&nbsp;)-") {
+            el.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;-"
+        }
+        else if (text == "&nbsp;&nbsp;&nbsp;&nbsp;-") {
+            el.innerHTML = "&nbsp;"
+            setTimeout(animatePulsar, 250)
+            return
+        }
+        setTimeout(animatePulsar, 50)
+    }
+
+    animatePulsar()
+
+    var SUBMIT_QUERY = null
+    var result_temp = document.getElementById("result_template").cloneNode(true)
+
+    function submitQuery() {
+        var text = document.getElementById("pulsar_search_box").value
+        if (text.replaceAll(" ", '') == '') {
+            document.getElementById("search_results").innerHTML = ""
+            document.getElementById("search_results").appendChild(result_temp.cloneNode(true))
+            return
+        }
+        var req = new XMLHttpRequest();
+        req.open("GET", "/list/pulsar_data/*/*" + text + "*/pub*.png")
+        req.send()
+        req.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                var files = this.responseText.split("|")
+                files.reverse()
+                document.getElementById("search_results").innerHTML = ""
+                if (files.length == 0) {
+                    document.getElementById("search_results").appendChild(result_temp.cloneNode(true))
+                }
+                for (var file of files) {
+                    var el = result_temp.cloneNode(true)
+                    el.innerHTML = "<a href='" + file.replaceAll("/publication_sum.png", "") + "'> " + file.split("/")[1] + " </a>"
+                    document.getElementById("search_results").appendChild(el)
+                }
+            }
+        }
+    }
+
+    function handleSearchInput(el) {
+        clearTimeout(SUBMIT_QUERY)
+        SUBMIT_QUERY = setTimeout(submitQuery, 150)
+    }
 
     function removeTargetsForRun(el) {
         while (el.nextSibling.classList.contains("target")) {
