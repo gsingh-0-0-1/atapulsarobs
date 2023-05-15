@@ -23,8 +23,9 @@ from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
 
 import datetime
 import timeslots
+#REDISPOSTPROCHASH = Template('postprocpype://${host}/${inst}/status')
 
-def main():
+def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
     logger = logger_defaults.getProgramLogger("observe", 
             loglevel=logging.INFO)
 
@@ -32,14 +33,9 @@ def main():
     antlo_list = [ant+lo.upper() for ant in ant_list for lo in ['b', 'c']]
     
     
-    freqs   = [1236]*len(ant_list)
-    freqs_c = [1236+672]*len(ant_list)
+    freqs   = [fLoB] * len(ant_list)
+    freqs_c = [fLoC] * len(ant_list)
 
-
-    #ata_control.set_freq(freqs, ant_list, lo='b', nofocus=True)
-    #time.sleep(20)
-    #ata_control.set_freq(freqs_c, ant_list, lo='c', nofocus=True)
-    #time.sleep(20)
 
     ata_control.reserve_antennas(ant_list)
     atexit.register(ata_control.release_antennas, ant_list, True)
@@ -47,7 +43,7 @@ def main():
     ORIG_OUT = sys.stdout
     f = open("sched.txt", "w")
     sys.stdout = f
-    schedule = timeslots.create_obs_schedule(timeslots.PULSARS, [[2, 150]])
+    schedule = timeslots.create_obs_schedule(timeslots.PULSARS, [[2, t]])
     f.close()
     sys.stdout = ORIG_OUT
 
@@ -114,8 +110,30 @@ def main():
         print("Recording for %.2f seconds started..." %new_obs_time)
         time.sleep(new_obs_time + obs_start_in + 5)
             
-
     print(obsdirs)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(prog = 'ATA Pulsar Observer',
+            description = 'A script to observe pulsars',
+            epilog = '')
+
+    parser.add_argument('-fb', '--freqB', help = 'Frequency for Lo B in MHz, default 1236')
+    parser.add_argument('-fc', '--freqC', help = 'Frequency for Lo C in MHz, default 1236 + 672 = 1908')
+    parser.add_argument('-t', '--time', help = 'Observation time in minutes, default 180')
+
+    args = parser.parse_args()
+
+    fB = args.freqB
+    fC = args.freqC
+    t = args.time
+
+    if fB is None:
+        fB = 1236
+
+    if fC is None:
+        fC = 1236 + 672
+
+    if t is None:
+        t = 180
+
+    main(fB, fC, t)

@@ -1,20 +1,9 @@
 import requests
 import json
 import subprocess
-import os
-import redis
-from hashpipe_keyvalues.standard import HashpipeKeyValues
-
+import requests
 
 MAIN_STEM = "/mnt/datac-netStorage-40G/projects/p009/"
-'''
-hpkv = HashpipeKeyValues(
-    "seti-node1",
-    0,
-    redis.Redis("redishost", decode_responses=True)
-)
-print(os.path.join(*hpkv.observation_stempath))
-'''
 
 host = "10.10.0.3"
 port = "8081"
@@ -37,4 +26,9 @@ target_dir = postproc_data['CPDELAYARG']
 
 target_dir = target_dir.replace(MAIN_STEM, "").split("/")[0]
 
-subprocess.Popen(["/home/gsingh/pulsar_analysis/ar_image_gen.sh", target_dir])
+#requests.get("http://10.10.1.31:8080/exec/procobs/" + target_dir)
+
+#subprocess.Popen(["/home/gsingh/pulsar_analysis/ar_image_gen.sh", target_dir])
+
+subprocess.Popen(["ssh", "gsingh@obs-node1",  "cd pulsar_analysis; conda activate pulsar; ./ar_image_gen.sh " + target_dir])
+
