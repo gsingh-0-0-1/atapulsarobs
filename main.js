@@ -40,6 +40,7 @@ app.get("/images/:obs/:targetdir/:LO", (req, res) => {
     })
 })
 
+/*
 app.get("/exec/:cmd/:args", (req, res) => {
     var cmd = req.params.cmd
     var args = req.params.args
@@ -48,16 +49,18 @@ app.get("/exec/:cmd/:args", (req, res) => {
     if (cmd === "procobs") {
         var targetobs = arglist[0]
         var cmd = "/home/gsingh/pulsar_analysis/ar_image_gen.sh"
-        var proc = child_process.spawn("bash", [cmd, targetobs], {detached : true, stdio: ['ignore', 'ignore', 'ignore']})
-        /*proc.stdout.on('data', function (data) {
+        //var proc = child_process.spawn("bash", [cmd, targetobs, "2>&1", "/home/gsingh/pulsar_analysis/log.txt"], {detached : true, stdio: ['ignore', 'ignore', 'ignore']})
+        var proc = child_process.spawn("bash", [cmd, targetobs, "2>&1", "/home/gsingh/pulsar_analysis/log.txt"])
+        proc.stdout.on('data', function (data) {
             console.log(data.toString());
         });
         proc.stderr.on('data', function (data) {
             console.log(data.toString());
-        });*/
+        });
         res.send("executing...");
     }
 })
+*/
 
 app.get("/list/*", (req, res) => {
     console.log(req.params['0'])
