@@ -14,6 +14,11 @@ body {
     color: white;
 }
 
+#anims {
+    position: relative;
+    left: 5%;
+}
+
 .obsLink a {
     color: white;
     text-decoration: none;
@@ -31,8 +36,11 @@ body {
     position: fixed;
     right: 15%;
     top: 5%;
-    width: 15%;
+    width: 20%;
     padding: 2vh 2vh;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
     font-family: Source Code Pro, Courier;
     border: none;
     background-color: #999;
@@ -47,7 +55,7 @@ body {
     right: 15%;
     top: 15%;
     height: 70%;
-    width: 15%;
+    width: 20%;
     overflow: scroll;
 }
 

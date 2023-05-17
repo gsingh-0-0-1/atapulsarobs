@@ -8,7 +8,11 @@
 </head>
 <body>
     <div id="title">
-        ata-pulsar-obs <span id="pulsar_anim">&nbsp;</span>
+        ata-pulsar-obs <br><br> 
+        <div id="anims">
+            <span id="pulsar_anim">&nbsp;</span> <br> 
+            <span id="intens_anim">&nbsp;</span>
+        </div>
     </div>
 
     <div id="obsLinkTemplate" class="obsLink" onclick=javascript:fetchTargetsForRun(this)>
@@ -31,31 +35,42 @@
 
     function animatePulsar() {
         var el = document.getElementById("pulsar_anim")
+        var pu = document.getElementById("intens_anim")
+
         var text = el.innerHTML
+        var inte = pu.innerHTML
+
         if (text == "&nbsp;") {
             el.innerHTML = "-"
+            pu.innerHTML = "\\____"
         }
         else if (text == "-") {
             el.innerHTML = "-("
+            pu.innerHTML = "_\\___"
         }
         else if (text == "-(") {
             el.innerHTML = "&nbsp;(O"
+            pu.innerHTML = "_/\\__"
         }
         else if (text == "&nbsp;(O") {
             el.innerHTML = "&nbsp;&nbsp;O)"
+            pu.innerHTML = "__/\\_"
         }
         else if (text == "&nbsp;&nbsp;O)") {
             el.innerHTML = "&nbsp;&nbsp;&nbsp;)-"
+            pu.innerHTML = "___/\\"
         }
         else if (text == "&nbsp;&nbsp;&nbsp;)-") {
             el.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;-"
+            pu.innerHTML = "____/"
         }
         else if (text == "&nbsp;&nbsp;&nbsp;&nbsp;-") {
             el.innerHTML = "&nbsp;"
+            pu.innerHTML = "_____"
             setTimeout(animatePulsar, 250)
             return
         }
-        setTimeout(animatePulsar, 50)
+        setTimeout(animatePulsar, 80)
     }
 
     animatePulsar()
@@ -63,11 +78,15 @@
     var SUBMIT_QUERY = null
     var result_temp = document.getElementById("result_template").cloneNode(true)
 
+    function clearResults() {
+        document.getElementById("search_results").innerHTML = ""
+        document.getElementById("search_results").appendChild(result_temp.cloneNode(true))
+    }
+
     function submitQuery() {
         var text = document.getElementById("pulsar_search_box").value
         if (text.replaceAll(" ", '') == '') {
-            document.getElementById("search_results").innerHTML = ""
-            document.getElementById("search_results").appendChild(result_temp.cloneNode(true))
+            clearResults()
             return
         }
         var req = new XMLHttpRequest();
@@ -75,6 +94,10 @@
         req.send()
         req.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
+                if (this.responseText.replaceAll(" ", "") === "") {
+                    clearResults()
+                    return
+                }
                 var files = this.responseText.split("|")
                 files.reverse()
                 document.getElementById("search_results").innerHTML = ""
@@ -83,7 +106,13 @@
                 }
                 for (var file of files) {
                     var el = result_temp.cloneNode(true)
-                    el.innerHTML = "<a href='" + file.replaceAll("/publication_sum.png", "") + "'> " + file.split("/")[1] + " </a>"
+
+                    // display name should have obs date-time as well as pulsar name
+                    // we get a filename of format `pulsar_data/obs_date_time/fil_XXXXX_XXXXX_XXXXX_PULSAR_XXXX/publication_sum.png
+                    // and so datetime is .split("/")[1]
+                    // and pulsar name is .split("/")[2].split("_")[4]
+                    var displayName = file.split("/")[1] + " -- " + file.split("/")[2].split("_")[4]
+                    el.innerHTML = "<a href='" + file.replaceAll("/publication_sum.png", "") + "'> " + displayName + " </a>"
                     document.getElementById("search_results").appendChild(el)
                 }
             }
@@ -120,14 +149,20 @@
                     var target_el = document.getElementById("obsLinkTemplate").cloneNode(true)
                     target_el.display = "block"
                     target_el.id = target
-                    //target_el.textContent = target
+
+                    target_el.style.marginLeft = "2%"
+
                     target_el.onclick = null
                     target_el.classList.add("target")
                     target_el.children[0].href = "/pulsar_data/" + el.id + "/" + target
-                    target_el.children[0].textContent = target
+                    
+                    // we get a string from the server that looks like:
+                    // fil_60080_22479_513387207_J1713+0747_0001
+                    // and so we want just the part that contains J1713+0747
+                    // hence target.split("_")[4]
+                    target_el.children[0].textContent = target.split("_")[4]
+                    
                     el.parentNode.insertBefore(target_el, el.nextSibling)
-                    //document.body.insertAfter(target_el, el)
-                    //el.appendChild(target_el)
                 }
             }
         }
