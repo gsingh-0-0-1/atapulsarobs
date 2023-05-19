@@ -23,9 +23,13 @@ from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
 
 import datetime
 import timeslots
+import dev_timeslots
+import subprocess
 #REDISPOSTPROCHASH = Template('postprocpype://${host}/${inst}/status')
 
-def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
+BEG_WAIT = 2
+
+def main(fLoB = 1236, fLoC = 1236 + 672, t = 150, changeFreqs = False):
     logger = logger_defaults.getProgramLogger("observe", 
             loglevel=logging.INFO)
 
@@ -36,6 +40,16 @@ def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
     freqs   = [fLoB] * len(ant_list)
     freqs_c = [fLoC] * len(ant_list)
 
+    if changeFreqs:
+        tmp_list = ant_list.copy()
+        tmp_list.remove("4e")
+        
+        ata_control.set_freq(freqs, ant_list, lo='b', nofocus=True)
+        ata_control.set_freq(freqs_c, tmp_list, lo='c')
+        time.sleep(20)
+
+        ata_control.autotune(ant_list, power_level=-13)
+        snap_if.tune_if_antslo(antlo_list)
 
     ata_control.reserve_antennas(ant_list)
     atexit.register(ata_control.release_antennas, ant_list, True)
@@ -43,7 +57,10 @@ def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
     ORIG_OUT = sys.stdout
     f = open("sched.txt", "w")
     sys.stdout = f
-    schedule = timeslots.create_obs_schedule(timeslots.PULSARS, [[2, t]])
+    #schedule = timeslots.create_obs_schedule(timeslots.PULSARS, [[BEG_WAIT, t]])
+    s = dev_timeslots.Schedule(BEG_WAIT, t, list(dev_timeslots.ATA_PULSARS))
+    s.schedule_targets()
+    schedule = s.get_formatted_schedule()
     f.close()
     sys.stdout = ORIG_OUT
 
@@ -51,13 +68,20 @@ def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
     obs_times = []
     start_times = []
 
+    '''
     for window in schedule:
         for item in schedule[window]:
             pulsar_list.append(item[0])
             obs_times.append(item[1] - timeslots.OBS_BUFFER_TIME)
             start_times.append(item[2])
+    '''
 
-    obs_times = [el * 60 for el in obs_times]
+    for window in schedule:
+        pulsar_list.append(window[0])
+        start_times.append(window[1])
+        obs_times.append(window[2])
+
+    #obs_times = [el * 60 for el in obs_times]
 
     d = hpguppi_defaults.hashpipe_targets_LoB
     d.update(hpguppi_defaults.hashpipe_targets_LoC)
@@ -66,6 +90,8 @@ def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
     obs_start_in = 10
 
     obsdirs = []
+
+    subprocess.run(["./send_sched.bash"])
 
     #for source, this_start_time, this_obs_time in zip(pulsar_list, start_times, obs_times):
     for target_ind in range(len(pulsar_list)):
@@ -83,12 +109,21 @@ def main(fLoB = 1236, fLoC = 1236 + 672, t = 180):
             print("WAITING", minutes_to_start, "for", source)
             time.sleep(minutes_to_start * 60)
 
+        if source == "WAIT":
+            print("OBS WAIT for %d -- NO AVAILABLE SOURCES" % this_obs_time)
+            time.sleep(this_obs_time)
+            continue
+
         now = datetime.datetime.now()
 
+        '''
         if target_ind != len(pulsar_list) - 1:
             new_obs_time = min(this_obs_time, 60 * ((start_times[target_ind + 1] - now).total_seconds() / 60 - timeslots.OBS_BUFFER_TIME))
         else:
             new_obs_time = this_obs_time
+        '''
+
+        new_obs_time = this_obs_time
 
         print("STARTING OBS FOR", source, "for", new_obs_time)
         ata_control.make_and_track_ephems(source, ant_list)
@@ -119,8 +154,8 @@ if __name__ == "__main__":
 
     parser.add_argument('-fb', '--freqB', help = 'Frequency for Lo B in MHz, default 1236')
     parser.add_argument('-fc', '--freqC', help = 'Frequency for Lo C in MHz, default 1236 + 672 = 1908')
-    parser.add_argument('-t', '--time', help = 'Observation time in minutes, default 180')
-
+    parser.add_argument('-t', '--time', help = 'Observation time in minutes, default 150')
+    parser.add_argument('-tune', '--tune', action='store_true', help = 'If changing frequencies, use this flag to autotune and change')
     args = parser.parse_args()
 
     fB = args.freqB
@@ -134,6 +169,9 @@ if __name__ == "__main__":
         fC = 1236 + 672
 
     if t is None:
-        t = 180
+        t = 150
 
-    main(fB, fC, t)
+    t = int(t) + BEG_WAIT
+
+    print(args.tune)
+    main(int(fB), int(fC), int(t), args.tune)

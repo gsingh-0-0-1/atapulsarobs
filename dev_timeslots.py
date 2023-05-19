@@ -174,7 +174,7 @@ class Window:
         return self.len().total_seconds()
 
 class Schedule:
-    def __init__(self, beg, end, targets, buf = 5):
+    def __init__(self, beg, end, targets, buf = OBS_BUFFER_TIME):
         self.now = datetime.datetime.now()
         self.beg = self.now + datetime.timedelta(minutes = beg)
         self.end = self.now + datetime.timedelta(minutes = end)
@@ -214,9 +214,9 @@ class Schedule:
         fluxdens = float(fetch_pulsar_data(target, "S1400"))
         basetime = MIN_OBS_TIME + OBS_TIME_RANGE * ((max(FLUX_DENS_HIGH_PLAT - fluxdens, 0) / FLUX_DENS_HIGH_PLAT) ** (1 / 2))
         maxtime = MAX_OBS_TIME
-        obstime = OBS_BUFFER_TIME + min(basetime, MAX_OBS_TIME)
+        obstime = self.buf + min(basetime, MAX_OBS_TIME)
 
-        obstime = min( max( MIN_OBS_TIME, MIN_OBS_TIME / ((fluxdens / FLUX_DENS_HIGH_PLAT) ** 2)), MAX_OBS_TIME) + OBS_BUFFER_TIME
+        obstime = min( max( MIN_OBS_TIME, MIN_OBS_TIME / ((fluxdens / FLUX_DENS_HIGH_PLAT) ** 2)), MAX_OBS_TIME) + self.buf
 
         return obstime * 60
 
@@ -298,6 +298,27 @@ class Schedule:
             if window.target is None:
                 print("\tWAIT \t\t\tfor {:.2f} s".format(t))
             else:
-                print("\tOBSERVE", window.target, "\tfor {:.2f} + {:.2f} s".format(t - OBS_BUFFER_TIME * 60, OBS_BUFFER_TIME * 60))
+                print("\tOBSERVE", window.target, "\tfor {:.2f} + {:.2f} s".format(t - self.buf * 60, self.buf * 60))
 
+    '''
+    Returns a schedule in the form of a list, with each entry formatted as:
+
+    [target / WAIT, begin_time, len]
+
+    All times are in seconds
+    '''
+    def get_formatted_schedule(self):
+        ret = []
+        temp = self.sched + self.avail
+        temp.sort(key = lambda x : x.beg)
+        for window in temp:
+            t = window.rawlen()
+            new = []
+            if window.target is None:
+                new = ["WAIT", window.beg, t]
+            else:
+                new = [window.target, window.beg, t - self.buf * 60]
+            ret.append(new)
+
+        return ret
 

@@ -30,5 +30,5 @@ target_dir = target_dir.replace(MAIN_STEM, "").split("/")[0]
 
 #subprocess.Popen(["/home/gsingh/pulsar_analysis/ar_image_gen.sh", target_dir])
 
-subprocess.Popen(["ssh", "gsingh@obs-node1",  "cd pulsar_analysis; conda activate pulsar; ./ar_image_gen.sh " + target_dir])
+subprocess.Popen(["ssh", "gsingh@obs-node1", "-i", "~/.ssh/gs_rsa", "cd pulsar_analysis; conda activate pulsar; ./ar_image_gen.sh " + target_dir], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
 
