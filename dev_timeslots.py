@@ -12,7 +12,7 @@ import pandas as pd
 
 ATA_PULSAR_DATA = pd.read_csv("PULSARS.csv")
 
-ATA_PULSARS = PULSARS = ATA_PULSAR_DATA["PULSAR"]
+ATA_PULSARS = PULSARS = list(ATA_PULSAR_DATA["PULSAR"])
 
 PRIORITIES = {}
 
@@ -182,6 +182,7 @@ class Schedule:
         self.sched = []
 
         self.buf = buf
+        self.ORIG_TARGETS = targets
         self.targets = targets
         self.obstimes = []
 
@@ -272,6 +273,8 @@ class Schedule:
                 break
 
     def schedule_targets(self):
+        self.targets = self.ORIG_TARGETS
+
         self.compute_target_obstimes()
         while self.get_longest_availability() > self.get_shortest_obstime():
             target = self.targets[0]
@@ -283,8 +286,12 @@ class Schedule:
             del self.targets[0]
             del self.obstimes[0]
 
-            self.targets.append(target)
-            self.obstimes.append(t)
+            if target_avail[0][0]:
+                self.targets.append(target)
+                self.obstimes.append(t)
+            
+            if len(self.targets) == 0:
+                break
 
         self.print()
 
